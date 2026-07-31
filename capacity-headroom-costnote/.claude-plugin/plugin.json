@@ -1,0 +1,7 @@
+{
+  "name": "capacity-headroom-costnote",
+  "description": "Headroom-as-band + cost-attribution methodology plugin (Universal Scalability Law non-linear degradation near capacity): band-not-snapshot headroom, cost attributed to the firing threshold. Phase-2 record surface only.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}

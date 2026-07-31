@@ -28,6 +28,40 @@ claude plugin install capacity-planning
 - `capacity-planning/agents/warrant-hunter.md` — rotating-stance hunt agent
 - `docs/specs/approvers.md` — Approve-authority allowlist (see below)
 
+### Methodology plugin set (issue-7)
+
+The domain methodologies adopted in issue-1
+(`docs/issue-1/proposals/capacity-planning-methodology-norm.md`) are each
+enforced by their own self-contained, marketplace-registered plugin —
+modeled on how core's own `freelunch`/`scout` plugins are one capability
+per plugin rather than a shared blob. Design/composition rationale:
+`docs/issue-7/proposals/enforcement-machinery-deepening.md`.
+
+- `capacity-forecast-method` — forecast-method selection (SRE book
+  "Capacity Planning" chapter organic/inorganic framing). Phase-1
+  proposal surface only.
+  `hooks/forecast-method-gate.sh` (kill switch
+  `CAPACITY_FORECAST_METHOD_GATE_OFF=1`).
+- `capacity-threshold-decomposition` — `growth_rate × lead_time ×
+  safety_buffer` threshold decomposition (Little's Law). Fires on both
+  the phase-1 proposal and phase-2 record surfaces.
+  `hooks/threshold-gate.sh` (kill switch
+  `CAPACITY_THRESHOLD_GATE_OFF=1`).
+- `capacity-headroom-costnote` — headroom-as-band + cost attribution
+  (Universal Scalability Law). Phase-2 record surface only.
+  `hooks/headroom-gate.sh` (kill switch
+  `CAPACITY_HEADROOM_GATE_OFF=1`).
+- `capacity-order-enforcement` — survey → scout-brief → proposal
+  citation-presence precondition. Phase-1 proposal and report surfaces
+  only. `hooks/citation-gate.sh` (kill switch
+  `CAPACITY_ORDER_ENFORCEMENT_GATE_OFF=1`).
+
+Each plugin is additive to (never a fork/replacement of) core's generic
+gates and this role's existing `capacity-fields-gate.sh`; each is
+registered as its own entry in `.claude-plugin/marketplace.json`.
+Handbook: `docs/handbooks/capacity-planning/forecast-checklist.md`.
+Gate tests: `tests/run-gate-tests.sh`.
+
 This is scaffolding, not a finished rulebook: fill in doctrine detail,
 handoff enforcement, and any role-specific progress gate before treating
 it as load-bearing.

@@ -1,0 +1,7 @@
+{
+  "name": "capacity-threshold-decomposition",
+  "description": "Threshold-decomposition methodology plugin (Little's Law): growth_rate x lead_time x safety_buffer, percentile-stated, never a bare flat percentage. Fires on both phase-1 proposal and phase-2 record surfaces.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}
