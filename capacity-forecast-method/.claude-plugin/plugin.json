@@ -1,0 +1,7 @@
+{
+  "name": "capacity-forecast-method",
+  "description": "Forecast-method selection methodology plugin (SRE book \"Capacity Planning\" chapter organic/inorganic framing): data-shape classification -> named technique + justification, phase-1 proposal surface only.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}

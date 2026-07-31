@@ -8,6 +8,26 @@
       "name": "capacity-planning",
       "source": "./capacity-planning",
       "description": "The capacity-planning role on contract v3 (issue-160 round-4 promotion). Decides: 향후 수요 성장 대비 자원이 충분하며 언제 증설해야 하는가."
+    },
+    {
+      "name": "capacity-forecast-method",
+      "source": "./capacity-forecast-method",
+      "description": "Forecast-method selection methodology plugin (SRE book Capacity Planning chapter organic/inorganic framing): data-shape classification -> named technique + justification, phase-1 proposal surface only."
+    },
+    {
+      "name": "capacity-threshold-decomposition",
+      "source": "./capacity-threshold-decomposition",
+      "description": "Threshold-decomposition methodology plugin (Little's Law): growth_rate x lead_time x safety_buffer, percentile-stated, never a bare flat percentage. Fires on both phase-1 proposal and phase-2 record surfaces."
+    },
+    {
+      "name": "capacity-headroom-costnote",
+      "source": "./capacity-headroom-costnote",
+      "description": "Headroom-as-band + cost-attribution methodology plugin (Universal Scalability Law non-linear degradation near capacity): band-not-snapshot headroom, cost attributed to the firing threshold. Phase-2 record surface only."
+    },
+    {
+      "name": "capacity-order-enforcement",
+      "source": "./capacity-order-enforcement",
+      "description": "Citation-presence / document-sequencing methodology plugin (survey -> scout-brief -> proposal): precondition every other phase-1 plugin's content check depends on. Phase-1 proposal and phase-1 report surfaces only."
     }
   ]
 }

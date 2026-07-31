@@ -1,0 +1,7 @@
+{
+  "name": "capacity-order-enforcement",
+  "description": "Citation-presence / document-sequencing methodology plugin (survey -> scout-brief -> proposal): precondition every other phase-1 plugin's content check depends on. Phase-1 proposal and phase-1 report surfaces only.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}
