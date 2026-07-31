@@ -1,181 +1,202 @@
-# Proposal — deepen capacity-planning's enforcement machinery to
-implementation-rulebook's hook-machine level (issue-7)
+# Proposal — enforcement machinery as a plugin set (issue-7)
 
 Subject: issue-7. Phase 1 only: this document is the plan; no plugin
 change happens until Approve. Basis:
 [survey.md](../reports/capacity-planning/survey.md),
 [scout-brief.md](../reports/capacity-planning/scout-brief.md).
 
-## (a) Directive deepening — `directive.sh`, all four arguments
+## Restructuring note
 
-Keep `core_role_directive`'s four-argument shape (no core-lib change;
-this role owns only its own argument content, per issue-2's division of
-labor). Deepen each argument from its current one-liner/partial-prose
-into phase-split, judgment-criteria-bearing, prohibition-bearing text:
+An approver rejected a single deepened gate/directive as the shape of
+this deliverable. Required shape, verbatim from the approver's issue-7
+comment:
 
-1. **`you_decide`** — split into phase 1 ("어떤 forecast method이 이
-   워크로드의 데이터 모양에 맞는가, 어떤 트리거 공식이 적용되는가를
-   설계") and phase 2 ("설계를 실제 기록으로 반영하고 실측 대비 검증")
-   so a reader knows which decision belongs to which phase, per contract
-   v3 s19's own two-phase split.
-2. **`use_when`** — add the judgment criterion that distinguishes this
-   role from its hand-off target: trigger when the question is *whether/
-   when to expand*, not *why something is currently slow* (that line
-   already exists as a hand-off but `use_when` itself stays a bare
-   one-liner today — this makes the boundary self-contained in the
-   `use_when` line, not only discoverable via the hand-off line).
-3. **`produces`** — already elaborated by issue-1; add explicit
-   **prohibitions** per facet, since the current text states only what
-   must be present, never what is forbidden:
-   - Forecast: prohibit merging organic/inorganic into one growth
-     number; prohibit a horizon shorter than the stated lead time.
-   - Threshold: prohibit a bare percentage with no growth_rate/
-     lead_time/safety_buffer decomposition; prohibit a flat (non-
-     percentile) threshold.
-   - Headroom: prohibit a single snapshot number in place of a band.
-   - Method: prohibit picking one method (regression/queueing/ML)
-     without stating why it fits this workload's data shape (steady vs.
-     scenario-specific vs. seasonality/campaign-driven) — this is
-     issue-1 (a)#2's existing prose rule, promoted into the directive
-     itself so it is visible at `SessionStart`, not only in a proposal
-     doc.
-4. **`hand_off`** — unchanged in substance (performance-engineering
-   arrow already correct); add the boundary-case judgment line already
-   used by this role's directive but tighten it: stop the moment the
-   question becomes "why is X slow now" rather than "will X still fit
-   later."
+> 단일 게이트/디렉티브 심화가 아니라 플러그인 세트로 체계화한다:
+> - 채택 방법론 각각을 독립 플러그인으로 (core의 freelunch/scout처럼 —
+>   룰북당 여러 개, freelunch 수준의 완성도).
+> - 기획서(phase 1) 규범과 산출물(phase 2) 규범도 각각을 플러그인
+>   조합으로 풀어낸다 — 어떤 플러그인들이 조합되어 그 규범이 성립하는지가
+>   설계의 본체.
+> - 각 플러그인 = 자기 완결(디렉티브/게이트/에이전트/테스트 포함
+>   가능), marketplace.json 등록, 명확한 단일 방법론 담당.
+> - proposal에는 플러그인 목록(이름·담당 방법론·구성요소·조합 관계)이
+>   필수.
 
-This is prose deepening of existing `core_role_directive` arguments — no
-new hook, no core-lib change, no canon script copied (only referenced,
-per the constraint).
+This supersedes the prior draft of this proposal in full. The unit of
+delivery is no longer "one gate script plus one directive edit" — it is
+a **set of independent, self-contained plugins**, one per adopted
+methodology, each registered in this repo's `.claude-plugin/marketplace.json`
+alongside the existing `capacity-planning` plugin entry. The
+survey/scout-brief's factual findings (what exists, what's missing,
+which sibling exemplars were scouted) are unchanged and still the
+evidence base; only the shape of what phase-2 will build is
+restructured here.
 
-## (b) Phase-1 methodology gate — new file,
-`capacity-planning/hooks/capacity-proposal-gate.sh`
+## Methodologies to decompose into plugins
 
-Modeled on (never copying) `pricing-rulebook`'s
-`methodology-gate.sh` pattern, scoped to this role's own phase-1 write
-surface, additive to core's generic gates, registered as an additional
-`PreToolUse` (Write|Edit|MultiEdit) entry in
-`capacity-planning/hooks/hooks.json` alongside the existing
-`capacity-fields-gate.sh` (which stays phase-2-only, unchanged).
+From `docs/issue-1/proposals/capacity-planning-methodology-norm.md` (the
+already-adopted norm this rulebook exists to enforce), three genuinely
+distinct methodologies are in scope, each independently choosable and
+independently checkable — this is what makes a one-plugin-per-methodology
+split correct rather than arbitrary slicing:
 
-Target paths (this role's own phase-1 write surfaces only — exits 0,
-no opinion, on anything else):
-- `docs/issue-<n>/proposals/*capacity*.md`
-- `docs/issue-<n>/reports/capacity-planning/*.md` (survey.md,
-  scout-brief.md themselves — see state-tracking below)
+1. **Forecast-method selection** — classify workload demand shape
+   (steady/organic vs. scenario-specific/inorganic vs. seasonality- or
+   campaign-driven) and pick regression/trend, queueing/scenario
+   modeling, or ML/seasonality-aware accordingly, with justification
+   tied to the data shape.
+2. **Threshold decomposition** — expansion trigger stated as
+   `growth_rate × lead_time × safety_buffer`, percentile-stated, never a
+   bare flat percentage.
+3. **Headroom/cost attribution** — headroom stated as a band (not a
+   snapshot number), cost attributed to the threshold that fires it.
 
-Checks, on the reconstructed resulting content (Write full-content;
-Edit/MultiEdit only when the resulting text is determinable from
-`old_string`/`new_string`, else **deny** — undeterminable content is
-never silently passed, mirroring pricing's own rule):
+Each gets its own plugin below. A fourth plugin, **order-enforcement**,
+is not a methodology from issue-1 but a cross-cutting mechanism
+(citation-presence for survey → scout-brief → proposal → record
+sequencing) that scout-brief's adopt/skip section identifies as
+required infrastructure shared by the other three — it is broken out as
+its own plugin rather than folded into one of the three because it
+fires on document *order*, not on any one methodology's content, and
+every methodology plugin's phase-1 check depends on it having run.
 
-1. **Method-named-or-scope-exited**: content names one of
-   regression/trend, queueing/scenario modeling, ML/seasonality-aware —
-   or explicitly states the method question does not yet apply (e.g. a
-   survey-only, non-terminal draft). A proposal that picks a method with
-   zero justification text nearby fails this check (keyword-adjacency,
-   not full NLP — matching pricing's `has_any()` granularity).
-2. **Traceable-numeric-form**: if the content contains digits presented
-   as a growth rate, lead time, or threshold, it must also contain a
-   labeling/sourcing term (e.g. "per", "source:", "assumption:",
-   "survey.md", "scout-brief.md") — mirrors pricing's "labeled-numbers"
-   check, adapted to issue-1 (a)#3's "traceable numeric form" rule.
-3. **Citation-presence (state/order enforcement)** — this is the
-   mechanism that replaces a separate state file per scout-brief's
-   adopt/skip: a **proposal** document must reference both
-   `survey.md` and `scout-brief.md` (by filename, case-insensitive) for
-   the gate to allow a terminal-looking write (heading `## (a)` or
-   `## (c)` present, signaling the proposal has reached its rationale
-   section — the same non-terminal leniency principle
-   `capacity-fields-gate.sh` already applies, adapted: an early proposal
-   draft with no rationale section yet is not blocked). A **survey**
-   document is exempt from this check (it is the root of the order, has
-   no predecessor to cite). A **scout-brief** document must reference
-   `survey.md` (its own required predecessor, since scout runs after
-   survey per the scout-directive's SURVEY-FIRST ORDER rule already
-   governing this repo's process).
-4. **Fail-closed**: unparseable JSON payload, missing `python3`,
-   undeterminable resulting content, or any internal exception all deny
-   (exit 2), matching every existing gate in this repo and its sibling
-   rulebooks.
+## Plugin list
 
-Kill switch: `CAPACITY_PROPOSAL_GATE_OFF=1`, matching this repo's
-`<ROLE>_..._OFF` naming convention.
+Each plugin lives at `<plugin-name>/` (sibling to the existing
+`capacity-planning/` plugin directory), with its own
+`.claude-plugin/plugin.json`, and is registered as its own entry in the
+root `.claude-plugin/marketplace.json` `plugins` array — modeled on how
+`freelunch` (`~/freelunch/freelunch`: `.claude-plugin/plugin.json`,
+`agents/freelunch-worker.md`, `hooks/hooks.json` + `hooks/*.sh`,
+`workflows/*.js`) is one self-contained, marketplace-registered unit
+per capability rather than a shared blob. No plugin file is written in
+this phase — this is the registry the phase-2 execution will fill in.
 
-## (c) Gate tests — new root `tests/` directory
+| # | Plugin name | Methodology owned | Components | Composes into |
+|---|---|---|---|---|
+| 1 | `capacity-forecast-method` | Forecast-method selection (data-shape → method + justification) | `hooks/forecast-method-gate.sh` (PreToolUse, phase-1 proposal surface: checks method named or scope-exited, per-facet keyword presence, fail-closed); `hooks/directive.sh` fragment deepening `you_decide`/`use_when` phase-1 half with the data-shape judgment criterion; `docs/handbooks/capacity-planning/forecast-checklist.md` (steps 1–3 of the checklist: classify shape, pick method, check prior-forecast divergence); `tests/run-gate-tests.sh` cases for method-named / scope-exited / no-method-fail | Phase-1 proposal norm |
+| 2 | `capacity-threshold-decomposition` | Threshold decomposition (`growth_rate × lead_time × safety_buffer`, percentile) | `hooks/threshold-gate.sh` (PreToolUse, fires on **both** phase-1 proposal and phase-2 record surfaces: traceable-numeric-form check — any growth-rate/lead-time/threshold digit must carry a labeling/sourcing term; flat-percentage prohibition); `hooks/directive.sh` fragment deepening the `produces` threshold facet with its explicit prohibition (no bare percentage, no non-percentile threshold); checklist step 4; gate tests for labeled/unlabeled numbers and flat-percentage rejection | Phase-1 proposal norm AND phase-2 deliverable norm |
+| 3 | `capacity-headroom-costnote` | Headroom-as-band + cost attribution | `hooks/headroom-gate.sh` (PreToolUse, phase-2 record surface only, additive to core's `record-fields-gate.sh` and to this role's existing `capacity-fields-gate.sh`: band-not-snapshot check on the headroom subsection, cost-attributed-to-threshold presence check); `hooks/directive.sh` fragment deepening the `produces` headroom/cost facets with their prohibitions; checklist step 5; gate tests for band-present/snapshot-rejected and cost-note-present/absent | Phase-2 deliverable norm |
+| 4 | `capacity-order-enforcement` | Citation-presence / document-sequencing (survey → scout-brief → proposal → record), the mechanism scout-brief's adopt/skip section names in place of a separate state file | `hooks/citation-gate.sh` (PreToolUse, phase-1 proposal and phase-1 report surfaces: proposal must cite `survey.md` and `scout-brief.md` by filename once a terminal-looking section heading is present, non-terminal drafts exempt; scout-brief must cite `survey.md`; survey itself exempt — root of the order); shared `tests/run-gate-tests.sh` cases for citation present/missing per document type, and for the non-terminal-draft leniency case | Phase-1 proposal norm (citation half) — a precondition every other phase-1 check in plugins 1–2 depends on before its own content checks run |
 
-New root-level `tests/run-gate-tests.sh` (this repo currently has no
-root `tests/` at all; adds the directory), modeled on
-implementation-rulebook's adjacent test-harness pattern (referenced, not
-copied — the actual assertions are specific to this role's checks).
-Cases, each invoking the gate script with a synthetic PreToolUse JSON
-payload on stdin and asserting exit code:
+Each plugin's `.claude-plugin/plugin.json` states its single owned
+methodology in its `description` field (mirroring how the existing
+`capacity-planning` plugin entry in `marketplace.json` states its single
+role in one line) — no plugin's description spans more than one
+methodology.
 
-- **Pass**: a terminal-looking proposal citing both survey.md and
-  scout-brief.md, naming a method with adjacent justification, and
-  labeling its numeric growth-rate/lead-time terms → exit 0.
-- **Deny — missing citation**: same proposal with `scout-brief.md`
-  reference removed → exit 2, message names the missing citation.
-- **Deny — unlabeled numbers**: a proposal with a bare growth-rate digit
-  and no labeling term nearby → exit 2.
-- **Deny — no method and not scope-exited** → exit 2.
-- **Pass — non-terminal draft**: a proposal with no `## (a)`/`## (c)`
-  heading yet (still drafting) and no citations yet → exit 0 (leniency).
-- **Pass — survey document itself** (exempt from citation check) → exit 0.
-- **Deny — scout-brief missing survey citation** → exit 2.
-- **Deny — unparseable payload / undeterminable Edit content** → exit 2
-  (fail-closed).
-- **No-op on out-of-scope path** (e.g. a write to
-  `docs/issue-<n>/reports/capacity-planning.md`, this role's phase-2
-  surface, which the new gate must not touch) → exit 0, no message.
+## Norm composition (the actual design)
 
-## (d) Agents/checklist for the repeated forecasting procedure
+### Phase-1 (기획서/proposal) norm
 
-The methodology has one genuinely repeated procedure worth a checklist:
-selecting a forecast method by data shape and validating a prior
-forecast against actuals before trusting a new one. Add
-`docs/handbooks/capacity-planning/forecast-checklist.md` (a handbook,
-per this repo's standing `docs/` bucket convention — not a new
-top-level directory) with the ordered steps: (1) classify the workload's
-demand shape (steady/organic, scenario-specific/inorganic, seasonality-
-or campaign-driven), (2) pick method accordingly and state why, (3) if a
-prior forecast for the same subject exists, check match/diverge before
-producing a new number, (4) derive the threshold via the growth_rate ×
-lead_time × safety_buffer formula and state the percentile, (5) state
-headroom as a band. This is a checklist, not an agent — no repeated
-autonomous multi-step tool-use loop was found in the methodology that
-would warrant a dedicated subagent definition (the whole procedure is
-performed by the human/agent already holding the capacity-planning role
-directive; a checklist is the correct weight, per the issue's own "필요
-시" qualifier).
+A proposal document is compliant when **all three** of the following
+plugins' phase-1 checks pass on it — none of the three is sufficient
+alone, and none is redundant with another:
 
-## Not touched
+- `capacity-order-enforcement` — the proposal cites its required
+  predecessors (survey.md, scout-brief.md) once it reaches a
+  terminal-looking section. This runs conceptually first: it establishes
+  that the proposal is grounded in the correct evidence chain before
+  content checks are meaningful.
+- `capacity-forecast-method` — the proposal names a forecast method (or
+  explicitly states the method question doesn't yet apply) with
+  justification tied to the workload's data shape.
+- `capacity-threshold-decomposition` (phase-1 half) — any numeric
+  growth-rate/lead-time/threshold figure in the proposal is traceable
+  (labeled/sourced), even though the full band/percentile structure
+  isn't required to be final at proposal stage.
+
+`capacity-headroom-costnote` does **not** participate in the phase-1
+norm — headroom-as-band and cost-attribution are phase-2-only
+obligations per issue-1's own two-phase split, so that plugin's gate is
+scoped to the record surface only.
+
+### Phase-2 (산출물/deliverable) norm
+
+A deliverable record (`docs/issue-<n>/reports/capacity-planning.md`) is
+compliant when **all three** of the following plugins' phase-2 checks
+pass:
+
+- `capacity-threshold-decomposition` (phase-2 half) — the threshold
+  subsection contains `growth_rate`/`lead_time`/`safety_buffer` plus a
+  percentile token, no bare flat percentage.
+- `capacity-headroom-costnote` — headroom expressed as a band, cost
+  attributed to the firing threshold.
+- (implicitly, core's own generic `record-fields-gate.sh` and this
+  role's existing `capacity-fields-gate.sh`, both unchanged and outside
+  this proposal's scope, continue to check the three-subsection
+  structural shape those two plugins' gates are additive to.)
+
+`capacity-forecast-method`'s gate does not fire on the phase-2 record
+surface — method selection is a phase-1 decision; phase-2 checks that
+the decision was *recorded* (via the threshold plugin's numeric-form
+check on the same figures), not that a fresh method choice is
+re-justified. `capacity-order-enforcement` does not fire on the
+phase-2 record either — order/citation is a phase-1-only concern per
+scout-brief (the record is the terminal artifact, nothing comes after
+it to require it cite its own predecessor beyond what phase-1 already
+enforced upstream).
+
+This composition — which plugins combine, and which phase(s) each
+contributes to — is the design; the plugin list table's rightmost
+column is the same information indexed by plugin instead of by norm.
+
+## marketplace.json registration (described, not executed)
+
+Phase-2 execution will add four new entries to the existing `plugins`
+array in `.claude-plugin/marketplace.json`, one per plugin above, each
+with `name`, `source` (`./capacity-forecast-method`,
+`./capacity-threshold-decomposition`, `./capacity-headroom-costnote`,
+`./capacity-order-enforcement`), and a `description` naming that
+plugin's single owned methodology — following the exact shape of the
+existing `capacity-planning` entry. The `capacity-planning` plugin
+entry itself is unchanged; these are additive siblings, not a
+replacement or a restructuring of it. No `marketplace.json` edit and no
+plugin scaffolding happens in this phase-1 document.
+
+## Not touched (unchanged from current state)
 
 - Core's `record-fields-gate.sh`, `trailer-gate.sh`,
   `handbook-trigger-gate.sh` — core-owned, unchanged.
-- `capacity-fields-gate.sh` (existing phase-2 gate) — unchanged; the new
-  gate in (b) is additive alongside it, not a replacement.
-- `capacity-planning/.claude-plugin/plugin.json` — unchanged, per
-  issue-2's existing division (directive detail lives in `directive.sh`
-  only).
-- No canon script from `pricing-rulebook` or `implementation-rulebook` is
-  copied; only their shape/pattern is referenced, per the constraint.
+- `capacity-fields-gate.sh` (existing phase-2 gate) — unchanged; the
+  new plugins' phase-2 gates are additive alongside it.
+- `capacity-planning/.claude-plugin/plugin.json` and its `marketplace.json`
+  entry — unchanged.
+- No canon script from `pricing-rulebook`, `implementation-rulebook`, or
+  `freelunch` is copied; only shape/pattern is referenced, per the
+  constraint already in force from the prior draft.
 
 ## Rationale
 
-- The current phase-2-only gate leaves the entire phase-1 methodology
-  norm (issue-1 (a)) as prose the human approver must catch by reading,
-  exactly the gap the issue names against implementation-rulebook's
-  hook-machine bar. A phase-1 gate closes that gap using this repo's own
-  already-adopted norm as its source (no new methodology invented here —
-  issue-1's norm is the one being mechanized, not superseded).
-- Citation-presence as the order-enforcement mechanism (rather than a
-  new state file) is the scout-brief's explicit adopt/skip conclusion:
-  none of the three in-repo exemplars need a separate state machine,
-  and introducing one here would be machinery beyond what the field's
-  converged pattern requires.
-- Gate tests and a checklist are the two requirements this repo has
-  never had any file for (no root `tests/`, no
-  `docs/handbooks/capacity-planning/`); both are additive, filling a
-  literal absence rather than replacing anything.
+- The approver's instruction reframes the deliverable from "deepen one
+  gate/directive" to "systematize as a plugin set," matching how core
+  itself is organized (`freelunch`, `scout`, one plugin per capability,
+  each self-contained and separately registered) rather than a
+  monolithic rulebook plugin acquiring more internal machinery.
+  Per-methodology plugins make each check independently auditable,
+  independently toggleable (each plugin can carry its own kill switch),
+  and independently testable, instead of bundling three unrelated
+  content checks into one gate script as the prior draft's (b) did.
+- The phase-1/phase-2 norm split was already established by issue-1;
+  what changes here is that each norm is now defined as an explicit
+  *composition* of plugins rather than as prose describing one gate's
+  internal logic. This makes it possible to state, e.g., "phase-1 norm =
+  order-enforcement + forecast-method + threshold(phase-1 half)" as a
+  literal, checkable set membership rather than a paragraph.
+  Order-enforcement is its own plugin (not folded into forecast-method
+  or threshold-decomposition) because it is the one check every other
+  phase-1 plugin's content check logically depends on running after —
+  citation-presence is a precondition, not a fourth parallel content
+  check of the same kind as the other two.
+- Threshold-decomposition spans both norms (unlike forecast-method and
+  headroom-costnote, which are phase-1-only and phase-2-only
+  respectively) because issue-1's adopted norm itself requires
+  traceable numeric form at proposal time and full decomposed structure
+  at record time for the *same* growth_rate/lead_time/safety_buffer
+  figures — one plugin owning both halves keeps the single methodology
+  in one place rather than splitting it across two plugins that would
+  otherwise duplicate the same digit-checking logic.
+- marketplace.json registration is described at the proposal level only,
+  per phase-1/phase-2 gating already in force in this repo (execution
+  work, including writing any plugin file or editing marketplace.json,
+  is phase-2 and gated on Approve).
