@@ -7,6 +7,15 @@ change happens until Approve. Basis:
 
 ## Restructuring note
 
+**Second-round update:** a subsequent domain review returned a WEAK
+verdict, requiring named canon attribution for the three methodologies,
+literal checklist prose (not a future-file reference), and a
+forecast-method gate stronger than bare keyword presence. The sections
+below (Canon attribution; Checklist draft text; the revised plugin-list
+row 1 and phase-1 norm bullet) are additive responses to that feedback;
+nothing in the plugin-set shape established by the first restructuring
+round is reverted.
+
 An approver rejected a single deepened gate/directive as the shape of
 this deliverable. Required shape, verbatim from the approver's issue-7
 comment:
@@ -42,14 +51,73 @@ split correct rather than arbitrary slicing:
 
 1. **Forecast-method selection** — classify workload demand shape
    (steady/organic vs. scenario-specific/inorganic vs. seasonality- or
-   campaign-driven) and pick regression/trend, queueing/scenario
-   modeling, or ML/seasonality-aware accordingly, with justification
-   tied to the data shape.
+   campaign-driven) and pick, per that shape: linear/exponential
+   regression trend fit (steady organic growth), Holt-Winters
+   exponential smoothing or ARIMA (seasonality- or campaign-driven
+   demand), or scenario/queueing modeling (a specific inorganic event) —
+   or an explicitly justified alternative — with justification tied to
+   the data shape. See "Canon attribution" below for the named source
+   this is drawn from.
 2. **Threshold decomposition** — expansion trigger stated as
    `growth_rate × lead_time × safety_buffer`, percentile-stated, never a
-   bare flat percentage.
+   bare flat percentage. See "Canon attribution" below for why this
+   formula is principled rather than arbitrary.
 3. **Headroom/cost attribution** — headroom stated as a band (not a
-   snapshot number), cost attributed to the threshold that fires it.
+   snapshot number), cost attributed to the threshold that fires it. See
+   "Canon attribution" below for the named source behind band-not-
+   snapshot.
+
+## Canon attribution
+
+The three methodologies above are not generic "industry best practice"
+— each traces to a named, real source, and the checklist/gate design
+downstream of this proposal names these sources directly instead of
+using vague category labels:
+
+- **Forecast-method selection** attributes to *Site Reliability
+  Engineering* (O'Reilly, ed. Betsy Beyer, Chris Jones, Jennifer Petoff,
+  Niall Richard Murphy), the "Capacity Planning" chapter. That chapter's
+  organic-vs-inorganic growth framing is exactly what this proposal's
+  `capacity-forecast-method` plugin already encodes: organic growth is
+  the demand-shape case that calls for a trend-fit method, and
+  inorganic/scenario-driven growth is the case that calls for
+  scenario/queueing modeling instead. The "regression/trend,
+  queueing/scenario modeling, ML/seasonality-aware" category labels in
+  the original draft of this proposal are, per this attribution, real
+  named techniques: **linear/exponential regression trend fitting** for
+  steady organic growth, and **Holt-Winters exponential smoothing**
+  (triple exponential smoothing, handling trend and seasonality
+  together) and/or **ARIMA** (AutoRegressive Integrated Moving Average,
+  the Box-Jenkins family) for seasonality- or campaign-driven demand.
+  This remains a "name it or justify a documented alternative"
+  requirement — the SRE chapter's own principle that method selection
+  must be justified by the shape of the demand data survives unchanged;
+  only the placeholder category labels are replaced with real technique
+  names.
+- **Threshold decomposition / headroom methodology** attributes to
+  queueing theory, specifically **Little's Law** (L = λW: queue length
+  equals arrival rate times wait time — Little, 1961) and the
+  **Universal Scalability Law** (USL — Neil J. Gunther's model of
+  throughput as a function of contention and coherency cost as
+  concurrency scales). Little's Law is the reason `lead_time` and
+  `growth_rate` combine multiplicatively into a sizing figure rather
+  than being tracked independently: `lead_time` is the "wait" term (how
+  long expansion takes to land) and `growth_rate` is the "arrival rate"
+  term (how fast demand is arriving against current capacity) — their
+  product, scaled by a `safety_buffer` percentile, is what determines
+  how much queue (unserved demand) accumulates before expansion
+  completes, which is exactly the sizing question the expansion-trigger
+  threshold answers. USL is the reason headroom must be expressed as a
+  band and not a snapshot number: USL models scaling as degrading
+  non-linearly (via contention and coherency cost) as a system
+  approaches its capacity limit, so a single point-in-time headroom
+  number cannot represent how quickly that margin degrades under
+  load — only a band communicates the "how much room, and how fast does
+  that room shrink as we approach the edge" information USL says is the
+  actual risk. Together these two named theories are why
+  `growth_rate × lead_time × safety_buffer` and the band-not-snapshot
+  headroom requirement are principled formulas grounded in queueing
+  theory, not arbitrary conventions invented for this rulebook.
 
 Each gets its own plugin below. A fourth plugin, **order-enforcement**,
 is not a methodology from issue-1 but a cross-cutting mechanism
@@ -74,7 +142,7 @@ this phase — this is the registry the phase-2 execution will fill in.
 
 | # | Plugin name | Methodology owned | Components | Composes into |
 |---|---|---|---|---|
-| 1 | `capacity-forecast-method` | Forecast-method selection (data-shape → method + justification) | `hooks/forecast-method-gate.sh` (PreToolUse, phase-1 proposal surface: checks method named or scope-exited, per-facet keyword presence, fail-closed); `hooks/directive.sh` fragment deepening `you_decide`/`use_when` phase-1 half with the data-shape judgment criterion; `docs/handbooks/capacity-planning/forecast-checklist.md` (steps 1–3 of the checklist: classify shape, pick method, check prior-forecast divergence); `tests/run-gate-tests.sh` cases for method-named / scope-exited / no-method-fail | Phase-1 proposal norm |
+| 1 | `capacity-forecast-method` | Forecast-method selection (data-shape → named technique + justification, per SRE book "Capacity Planning" chapter) | `hooks/forecast-method-gate.sh` (PreToolUse, phase-1 proposal surface: verifies the named method matches an allow-list of recognized technique-name keywords — `regression`, `trend`, `holt-winters`/`holt winters`, `arima` — or the literal `대안:`/`alternative:` marker followed by free-text justification; requires a minimum-length justification (>= N characters of prose, not just the bare keyword) following the method name; cross-checks that the justification co-occurs with a data-shape classification term (`organic`/`inorganic`/`seasonal`/`campaign`/조직적/비조직적/계절), so a method claim cannot stand unlinked from a classified shape; fail-closed if any of the three checks fails); `hooks/directive.sh` fragment deepening `you_decide`/`use_when` phase-1 half with the data-shape judgment criterion; `docs/handbooks/capacity-planning/forecast-checklist.md` (steps 1–3 of the checklist below: classify shape, pick named method, check prior-forecast divergence); `tests/run-gate-tests.sh` cases for method-named-with-shape-link / scope-exited / no-method-fail / keyword-without-justification-fail / justification-without-shape-link-fail | Phase-1 proposal norm |
 | 2 | `capacity-threshold-decomposition` | Threshold decomposition (`growth_rate × lead_time × safety_buffer`, percentile) | `hooks/threshold-gate.sh` (PreToolUse, fires on **both** phase-1 proposal and phase-2 record surfaces: traceable-numeric-form check — any growth-rate/lead-time/threshold digit must carry a labeling/sourcing term; flat-percentage prohibition); `hooks/directive.sh` fragment deepening the `produces` threshold facet with its explicit prohibition (no bare percentage, no non-percentile threshold); checklist step 4; gate tests for labeled/unlabeled numbers and flat-percentage rejection | Phase-1 proposal norm AND phase-2 deliverable norm |
 | 3 | `capacity-headroom-costnote` | Headroom-as-band + cost attribution | `hooks/headroom-gate.sh` (PreToolUse, phase-2 record surface only, additive to core's `record-fields-gate.sh` and to this role's existing `capacity-fields-gate.sh`: band-not-snapshot check on the headroom subsection, cost-attributed-to-threshold presence check); `hooks/directive.sh` fragment deepening the `produces` headroom/cost facets with their prohibitions; checklist step 5; gate tests for band-present/snapshot-rejected and cost-note-present/absent | Phase-2 deliverable norm |
 | 4 | `capacity-order-enforcement` | Citation-presence / document-sequencing (survey → scout-brief → proposal → record), the mechanism scout-brief's adopt/skip section names in place of a separate state file | `hooks/citation-gate.sh` (PreToolUse, phase-1 proposal and phase-1 report surfaces: proposal must cite `survey.md` and `scout-brief.md` by filename once a terminal-looking section heading is present, non-terminal drafts exempt; scout-brief must cite `survey.md`; survey itself exempt — root of the order); shared `tests/run-gate-tests.sh` cases for citation present/missing per document type, and for the non-terminal-draft leniency case | Phase-1 proposal norm (citation half) — a precondition every other phase-1 check in plugins 1–2 depends on before its own content checks run |
@@ -98,9 +166,13 @@ alone, and none is redundant with another:
   terminal-looking section. This runs conceptually first: it establishes
   that the proposal is grounded in the correct evidence chain before
   content checks are meaningful.
-- `capacity-forecast-method` — the proposal names a forecast method (or
-  explicitly states the method question doesn't yet apply) with
-  justification tied to the workload's data shape.
+- `capacity-forecast-method` — the proposal names a forecast method
+  from the recognized set (linear/exponential regression trend fit,
+  Holt-Winters exponential smoothing, ARIMA, scenario/queueing
+  modeling) — or an explicitly justified alternative — (or explicitly
+  states the method question doesn't yet apply) with a non-trivial
+  justification tied to the workload's data-shape classification, per
+  the gate's three-part check described in the plugin list table above.
 - `capacity-threshold-decomposition` (phase-1 half) — any numeric
   growth-rate/lead-time/threshold figure in the proposal is traceable
   (labeled/sourced), even though the full band/percentile structure
@@ -140,6 +212,44 @@ enforced upstream).
 This composition — which plugins combine, and which phase(s) each
 contributes to — is the design; the plugin list table's rightmost
 column is the same information indexed by plugin instead of by norm.
+
+## Checklist draft text (docs/handbooks/capacity-planning/forecast-checklist.md, phase-2 execution will write this verbatim)
+
+This proposal previously gestured at the checklist ("steps 1–3: classify
+shape, pick method, check prior-forecast divergence"; "checklist step
+4"; "checklist step 5") without stating the actual wording. The literal
+draft text below is what phase-2 execution will write verbatim into
+`docs/handbooks/capacity-planning/forecast-checklist.md`; it is not a
+placeholder and may only be refined in wording, not left unwritten:
+
+```
+1. Classify the workload's demand shape: steady/organic growth, a
+   specific scenario/inorganic event, or seasonality/campaign-driven —
+   state which, with the evidence (a time series, an event calendar, a
+   campaign schedule) that supports the classification.
+2. Pick the forecast method matching that shape: linear/exponential
+   regression trend fit for steady organic growth; Holt-Winters
+   exponential smoothing or ARIMA for seasonality/campaign-driven
+   demand; scenario/queueing modeling for a specific inorganic event.
+   Name which was picked and why, tied to step 1's classification.
+3. If a prior forecast exists for the same subject, compare
+   forecast-vs-actual: state match or diverge; a divergence is a
+   model-instability signal to flag, not to silently overwrite.
+4. State the expansion-trigger threshold as
+   growth_rate × lead_time × safety_buffer, each term a concrete labeled
+   value, sized to a stated percentile of demand (e.g. p97.5) over the
+   forecast horizon — never a bare flat percentage.
+5. State headroom as a band (not a single snapshot number, per the
+   Universal Scalability Law's non-linear degradation near capacity —
+   see Canon attribution), and attribute the incremental cost of the
+   recommended expansion to the specific threshold that fires it.
+```
+
+Steps 1–2 are owned by `capacity-forecast-method`, step 3 is the
+prior-forecast-divergence check also owned by `capacity-forecast-method`,
+step 4 is owned by `capacity-threshold-decomposition`, and step 5 is
+owned by `capacity-headroom-costnote` — matching the plugin-list table's
+"Methodology owned" column above.
 
 ## marketplace.json registration (described, not executed)
 
