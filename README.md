@@ -24,7 +24,6 @@ claude plugin install capacity-planning
 - `capacity-planning/hooks/directive.sh` — SessionStart role directive
 - `capacity-planning/hooks/capacity-fields-gate.sh` — this role's phase-2
   record required-field gate (kill switch `CAPACITY_FIELDS_GATE_OFF=1`)
-- `capacity-planning/agents/warrant-hunter.md` — rotating-stance hunt agent
 - `docs/specs/approvers.md` — Approve-authority allowlist (see below)
 
 Generic `Subject: issue-<n>` trailer enforcement, per-record required-field

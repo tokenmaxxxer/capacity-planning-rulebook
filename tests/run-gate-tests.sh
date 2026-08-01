@@ -143,6 +143,60 @@ PLACEHOLDER
 ## Cost note
 still drafting" "$GOOD_CF_MULTI"
 
+echo "== mandatory case group: standalone Edit-tool reconstruction (Write|Edit|MultiEdit matcher parity) =="
+GOOD_TH_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$RECORD"'","old_string":"PLACEHOLDER","new_string":"growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, sized to p97.5 of demand over the forecast horizon"}}'
+runedit allow threshold-edit-labeled-with-percentile "$TH" "$RECORD" "state: terminal
+## Expansion trigger thresholds
+PLACEHOLDER" "$GOOD_TH_EDIT_PAYLOAD"
+BAD_TH_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$RECORD"'","old_string":"PLACEHOLDER","new_string":"we expand at 80% utilization, growth_rate 12%, lead_time 2 weeks, safety_buffer 10%"}}'
+runedit deny  threshold-edit-flat-percentage-fail "$TH" "$RECORD" "state: terminal
+## Expansion trigger thresholds
+PLACEHOLDER" "$BAD_TH_EDIT_PAYLOAD"
+
+GOOD_HR_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$RECORD"'","old_string":"PLACEHOLDER","new_string":"headroom band 18%-24%"}}'
+runedit allow headroom-edit-band-present "$HR" "$RECORD" "state: terminal
+## Headroom
+PLACEHOLDER
+## Cost note
+cost: \$4,000/mo attributed to the growth_rate threshold firing" "$GOOD_HR_EDIT_PAYLOAD"
+BAD_HR_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$RECORD"'","old_string":"PLACEHOLDER","new_string":"headroom is 22%"}}'
+runedit deny  headroom-edit-snapshot-fail "$HR" "$RECORD" "state: terminal
+## Headroom
+PLACEHOLDER
+## Cost note
+cost: \$4,000/mo attributed to the growth_rate threshold firing" "$BAD_HR_EDIT_PAYLOAD"
+
+GOOD_OE_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$PROPOSAL"'","old_string":"PLACEHOLDER","new_string":"Basis: survey.md, scout-brief.md"}}'
+runedit allow order-enforcement-edit-with-citations "$OE" "$PROPOSAL" "## Rationale
+PLACEHOLDER" "$GOOD_OE_EDIT_PAYLOAD"
+BAD_OE_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$PROPOSAL"'","old_string":"PLACEHOLDER","new_string":"no citations here"}}'
+runedit deny  order-enforcement-edit-missing-citations "$OE" "$PROPOSAL" "## Rationale
+PLACEHOLDER" "$BAD_OE_EDIT_PAYLOAD"
+
+GOOD_FM_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$PROPOSAL"'","old_string":"PLACEHOLDER","new_string":"We pick linear regression trend fit. '"$JUSTIFY_PAD"' data shape: '"$SHAPE_LINK"'."}}'
+runedit allow forecast-method-edit-with-shape-link "$FM" "$PROPOSAL" "## Rationale
+PLACEHOLDER" "$GOOD_FM_EDIT_PAYLOAD"
+BAD_FM_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$PROPOSAL"'","old_string":"PLACEHOLDER","new_string":"regression organic"}}'
+runedit deny  forecast-method-edit-keyword-no-justification "$FM" "$PROPOSAL" "## Rationale
+PLACEHOLDER" "$BAD_FM_EDIT_PAYLOAD"
+
+GOOD_CF_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$CFPATH"'","old_string":"PLACEHOLDER","new_string":"growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, sized to p97.5"}}'
+runedit allow fields-edit-all-present "$CF" "$CFPATH" "state: terminal
+## Capacity forecast
+x
+## Expansion trigger thresholds
+PLACEHOLDER
+## Cost note
+x" "$GOOD_CF_EDIT_PAYLOAD"
+BAD_CF_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$CFPATH"'","old_string":"PLACEHOLDER","new_string":"lead_time 2 weeks, safety_buffer 15%, p97.5"}}'
+runedit deny  fields-edit-missing-growth-rate "$CF" "$CFPATH" "state: terminal
+## Capacity forecast
+x
+## Expansion trigger thresholds
+PLACEHOLDER
+## Cost note
+x" "$BAD_CF_EDIT_PAYLOAD"
+
 echo "== mandatory case group: malformed JSON denies (fail-closed) =="
 malformed() { # gate_script raw_payload name
   out="$(printf '%s' "$2" | env CLAUDE_PROJECT_DIR="$(mktemp -d)" /bin/bash "$1" 2>&1)"
@@ -219,6 +273,19 @@ bashwrite allow threshold-bash-write-not-yet-covered "$TH" "$RECORD" \
   "cat > $RECORD <<'EOF'
 we expand at 80% utilization
 EOF"
+
+echo "== mandatory case group: missing-core denies (source guard fail-closed) =="
+missingcore() { # gate_script name
+  out="$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":"x","content":"x"}}' \
+    | env CLAUDE_PROJECT_DIR="$(mktemp -d)" CLAUDE_PLUGIN_ROOT_CORE="/nonexistent-core-$$" /bin/bash "$1" 2>&1)"
+  rc=$?; case "$rc" in 0) got=allow ;; 2) got=deny ;; *) got="exit-$rc" ;; esac
+  report deny "$got" "$2"
+}
+missingcore "$FM" "forecast-method-gate: missing-core denies"
+missingcore "$TH" "threshold-gate: missing-core denies"
+missingcore "$HR" "headroom-gate: missing-core denies"
+missingcore "$OE" "citation-gate: missing-core denies"
+missingcore "$CF" "capacity-fields-gate: missing-core denies"
 
 echo
 echo "pass=$pass fail=$fail"
