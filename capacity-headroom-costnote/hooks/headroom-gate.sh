@@ -4,76 +4,76 @@
 # Universal Scalability Law: headroom must be a band, not a snapshot
 # number; cost attributed to the firing threshold.
 # Kill switch: CAPACITY_HEADROOM_GATE_OFF=1
-set -euo pipefail
+. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh"
+gate_trap_fail_closed
+set -uo pipefail
 
-[ "${CAPACITY_HEADROOM_GATE_OFF:-0}" = "1" ] && exit 0
+gate_kill_switch_active "${CAPACITY_HEADROOM_GATE_OFF:-}" || { trap - EXIT; exit 0; }
 
 input="$(cat)"
 
 file_path="$(printf '%s' "$input" | python3 -c '
-import json, sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    sys.exit(0)
-ti = d.get("tool_input", {}) or {}
-print(ti.get("file_path", ""))
-' 2>/dev/null)" || { echo "capacity-headroom-gate: unparseable payload" >&2; exit 2; }
+import importlib.util, os, json, sys
+_spec = importlib.util.spec_from_file_location("gate_lib", os.environ["GATE_LIB_PY"])
+gate_lib = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(gate_lib)
 
-case "$file_path" in
-  */docs/issue-*/reports/capacity-planning.md|docs/issue-*/reports/capacity-planning.md) ;;
-  *) exit 0 ;;
-esac
+raw = sys.stdin.read()
+
+def deny(msg):
+    print(msg, file=sys.stderr)
+    sys.exit(2)
+
+d = gate_lib.gate_parse_json_or_deny(raw, deny)
+ti = d.get("tool_input", {}) or {}
+fp = ti.get("file_path", "")
+root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+scope = gate_lib.gate_normalize_path(root, fp)
+import re
+if scope is not None and re.match(r"^docs/issue-\d+/reports/capacity-planning\.md$", scope):
+    print(scope)
+')"
+rc=$?
+if [ $rc -eq 2 ]; then
+  gate_deny "capacity-headroom-gate" "unparseable payload"
+fi
+
+if [ -z "$file_path" ]; then
+  gate_allow
+fi
 
 content="$(printf '%s' "$input" | python3 -c '
-import json, sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    sys.exit(1)
+import importlib.util, os, sys
+_spec = importlib.util.spec_from_file_location("gate_lib", os.environ["GATE_LIB_PY"])
+gate_lib = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(gate_lib)
+
+raw = sys.stdin.read()
+
+def deny(msg):
+    print(msg, file=sys.stderr)
+    sys.exit(2)
+
+d = gate_lib.gate_parse_json_or_deny(raw, deny)
 tool = d.get("tool_name", "")
 ti = d.get("tool_input", {}) or {}
 fp = ti.get("file_path", "")
 
-def read_existing():
+current = None
+if os.path.exists(fp):
     with open(fp, "r", encoding="utf-8") as f:
-        return f.read()
+        current = f.read()
 
-if tool == "Write":
-    print(ti.get("content", ""))
-elif tool == "Edit":
-    cur = read_existing()
-    old = ti.get("old_string", "")
-    new = ti.get("new_string", "")
-    if old and old not in cur:
-        sys.exit(1)
-    if ti.get("replace_all"):
-        print(cur.replace(old, new))
-    else:
-        print(cur.replace(old, new, 1))
-elif tool == "MultiEdit":
-    cur = read_existing()
-    for e in ti.get("edits", []) or []:
-        old = e.get("old_string", "")
-        new = e.get("new_string", "")
-        if old and old not in cur:
-            sys.exit(1)
-        if e.get("replace_all"):
-            cur = cur.replace(old, new)
-        else:
-            cur = cur.replace(old, new, 1)
-    print(cur)
-else:
-    print(read_existing())
-' 2>/dev/null)"
+text, ok = gate_lib.gate_reconstruct_write(tool, ti, current)
+if not ok:
+    sys.exit(2)
+sys.stdout.write(text)
+')"
 rc=$?
 if [ $rc -ne 0 ]; then
-  echo "capacity-headroom-gate: could not reconstruct resulting content (fail-closed)" >&2
-  exit 2
+  gate_deny "capacity-headroom-gate" "could not reconstruct resulting content (fail-closed)"
 fi
 
 if ! printf '%s' "$content" | grep -qiE 'loop_state:\s*terminal|state:\s*(done|terminal|complete)'; then
-  exit 0
+  gate_allow
 fi
 
 lc="$(printf '%s' "$content" | tr '[:upper:]' '[:lower:]')"
@@ -99,11 +99,8 @@ else
 fi
 
 if [ -n "$missing" ]; then
-  {
-    echo "capacity-headroom-gate: headroom/cost fields fail issue-1 norm (docs/issue-1/proposals/capacity-planning-methodology-norm.md; Universal Scalability Law):"
-    printf '%b' "$missing"
-  } >&2
-  exit 2
+  gate_deny "capacity-headroom-gate" "headroom/cost fields fail issue-1 norm (docs/issue-1/proposals/capacity-planning-methodology-norm.md; Universal Scalability Law):
+$(printf '%b' "$missing")"
 fi
 
-exit 0
+gate_allow
