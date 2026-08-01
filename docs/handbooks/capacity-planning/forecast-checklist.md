@@ -38,3 +38,17 @@ See `docs/handbooks/gate-house-standard.md` and
 `docs/issue-10/reports/capacity-planning.md` for the migration this
 enforcement now runs on (`gate-lib.sh`/`gate-lib.py`, referenced not
 copied).
+
+## Gate A+ final closeout note (issue-13)
+
+Step 4's percentile check now requires a non-alphanumeric boundary before
+the `p` in a `pNN`-shaped token (`p97.5`, `p99`, ...) — an incidental
+`p`+digit substring inside an unrelated word (`cap95`, `step2`) no longer
+satisfies the requirement. Step 5's band/cost checks (`headroom-gate.sh`)
+are now scoped to the record's own headroom/cost-note heading slice, not
+grepped against the whole document. All five gates (this checklist's three
+plus `capacity-fields-gate.sh` and `citation-gate.sh`) now fail closed on
+an unreachable `gate-lib.sh`/`gate-lib.py` (mandatory `||` source guard)
+and on a symlinked project root (root is `realpath`'d before scope
+matching). See `docs/issue-13/reports/capacity-planning.md` for the full
+fix-plan record and test evidence.

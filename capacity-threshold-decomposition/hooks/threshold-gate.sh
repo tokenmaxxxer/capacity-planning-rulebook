@@ -5,7 +5,7 @@
 # (growth_rate x lead_time x safety_buffer): traceable numeric form,
 # percentile-stated, never a bare flat percentage.
 # Kill switch: CAPACITY_THRESHOLD_GATE_OFF=1
-. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh"
+. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh" || { echo "threshold-gate.sh: cannot source gate-lib.sh" >&2; exit 2; }
 gate_trap_fail_closed
 set -uo pipefail
 
@@ -27,7 +27,7 @@ def deny(msg):
 d = gate_lib.gate_parse_json_or_deny(raw, deny)
 ti = d.get("tool_input", {}) or {}
 file_path = ti.get("file_path", "")
-root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+root = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 scope = gate_lib.gate_normalize_path(root, file_path)
 
 kind = ""
@@ -143,14 +143,14 @@ missing=""
 printf '%s' "$lc" | grep -qE 'growth_rate|성장률' || missing="${missing}- growth_rate term missing\n"
 printf '%s' "$lc" | grep -qE 'lead_time|리드타임|조달\s*기간' || missing="${missing}- lead_time term missing\n"
 printf '%s' "$lc" | grep -qE 'safety_buffer|안전\s*버퍼' || missing="${missing}- safety_buffer term missing\n"
-printf '%s' "$lc" | grep -qE 'p[0-9]{1,3}(\.[0-9]+)?|percentile|백분위' || missing="${missing}- no percentile token (must be percentile-stated, not a bare figure)\n"
+printf '%s' "$lc" | grep -qE '(^|[^[:alnum:]])p[0-9]{1,3}(\.[0-9]+)?|percentile|백분위' || missing="${missing}- no percentile token (must be percentile-stated, not a bare figure)\n"
 
 # Flat-percentage prohibition: a bare "NN%" with no percentile/labeling
 # term nearby is rejected -- a lone percentage token unaccompanied by
 # any percentile marker anywhere in the slice signals a flat-percentage
 # threshold.
 if printf '%s' "$lc" | grep -qE '[0-9]+(\.[0-9]+)?[[:space:]]*%' \
-   && ! printf '%s' "$lc" | grep -qE 'p[0-9]{1,3}(\.[0-9]+)?|percentile|백분위'; then
+   && ! printf '%s' "$lc" | grep -qE '(^|[^[:alnum:]])p[0-9]{1,3}(\.[0-9]+)?|percentile|백분위'; then
   missing="${missing}- bare flat-percentage figure found with no percentile qualifier (forbidden by Little's Law decomposition)\n"
 fi
 

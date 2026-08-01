@@ -2,7 +2,7 @@
 # Role-owned PreToolUse gate for capacity-planning's phase-2 record.
 # Additive to core's generic record-fields-gate.sh; does not replace it.
 # Kill switch: CAPACITY_FIELDS_GATE_OFF=1
-. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh"
+. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh" || { echo "capacity-fields-gate.sh: cannot source gate-lib.sh" >&2; exit 2; }
 gate_trap_fail_closed
 set -uo pipefail
 
@@ -25,13 +25,13 @@ raw = sys.stdin.read()
 d = gate_lib.gate_parse_json_or_deny(raw, deny)
 ti = d.get("tool_input", {}) or {}
 fp = ti.get("file_path", "")
-root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+root = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 tail = gate_lib.gate_normalize_path(root, fp)
 if tail is not None and re.match(r"^docs/issue-\d+/reports/capacity-planning\.md$", tail):
     print(tail)
 ')"
 rc=$?
-[ "$rc" = 2 ] && gate_deny "capacity-fields-gate" "malformed tool-call payload"
+[ "$rc" != 0 ] && gate_deny "capacity-fields-gate" "malformed tool-call payload"
 
 # Only fires on this role's own record path.
 [ -z "$file_path" ] && gate_allow
@@ -68,7 +68,7 @@ if not ok:
 print(new_text if new_text is not None else "")
 ')"
 rc=$?
-[ "$rc" = 2 ] && gate_deny "capacity-fields-gate" "cannot reconstruct the resulting content for this tool call; refusing to guess"
+[ "$rc" != 0 ] && gate_deny "capacity-fields-gate" "cannot reconstruct the resulting content for this tool call; refusing to guess"
 
 [ -z "$content" ] && gate_allow
 

@@ -3,7 +3,7 @@
 # selection (SRE book "Capacity Planning" chapter organic/inorganic
 # framing). Fires on docs/issue-*/proposals/*.md only.
 # Kill switch: CAPACITY_FORECAST_METHOD_GATE_OFF=1
-. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh"
+. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh" || { echo "forecast-method-gate.sh: cannot source gate-lib.sh" >&2; exit 2; }
 gate_trap_fail_closed
 set -uo pipefail
 
@@ -25,13 +25,13 @@ d = gate_lib.gate_parse_json_or_deny(raw, deny)
 ti = d.get("tool_input", {}) or {}
 fp = ti.get("file_path", "")
 
-root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+root = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 tail = gate_lib.gate_normalize_path(root, fp)
 if tail is not None and re.match(r"^docs/issue-\d+/proposals/.*\.md$", tail):
     print(tail)
 ')"
 rc=$?
-if [ "$rc" = 2 ]; then
+if [ "$rc" != 0 ]; then
   gate_deny "capacity-forecast-method-gate" "malformed tool-call payload"
 fi
 if [ -z "$file_path" ]; then

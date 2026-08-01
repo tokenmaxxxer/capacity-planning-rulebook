@@ -4,7 +4,7 @@
 # citation chain in lieu of a separate state file. survey.md itself is
 # exempt (it is the root of the order).
 # Kill switch: CAPACITY_ORDER_ENFORCEMENT_GATE_OFF=1
-. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh"
+. "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/gate-lib.sh" || { echo "citation-gate.sh: cannot source gate-lib.sh" >&2; exit 2; }
 gate_trap_fail_closed
 set -uo pipefail
 
@@ -26,7 +26,7 @@ d = gate_lib.gate_parse_json_or_deny(raw, deny)
 ti = d.get("tool_input", {}) or {}
 fp = ti.get("file_path", "")
 
-root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+root = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 tail = gate_lib.gate_normalize_path(root, fp)
 
 k = "none"
@@ -40,7 +40,7 @@ if tail is not None:
 print(k)
 ')"
 rc=$?
-if [ "$rc" = 2 ]; then
+if [ "$rc" != 0 ]; then
   gate_deny "capacity-order-enforcement-gate" "malformed tool-call payload"
 fi
 
