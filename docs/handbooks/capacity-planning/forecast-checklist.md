@@ -26,3 +26,15 @@ plugin composition this checklist backs.
    Universal Scalability Law's non-linear degradation near capacity),
    and attribute the incremental cost of the recommended expansion to
    the specific threshold that fires it.
+
+## Gate enforcement note (issue-10)
+
+Steps 1-2's method/shape claim (`forecast-method-gate.sh`) and step 4's
+term decomposition (`threshold-gate.sh`) are checked with a bounded
+adjacency/heading-slice window around the relevant claim, not a
+whole-document substring search — a term mentioned elsewhere in the
+document, unconnected to the actual claim, no longer satisfies the check.
+See `docs/handbooks/gate-house-standard.md` and
+`docs/issue-10/reports/capacity-planning.md` for the migration this
+enforcement now runs on (`gate-lib.sh`/`gate-lib.py`, referenced not
+copied).
