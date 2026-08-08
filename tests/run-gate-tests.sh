@@ -169,6 +169,15 @@ tbd"
 run allow all-fields-present "$CF" "$CFPATH" "$GOOD_CF"
 run allow foreign-path "$CF" "docs/issue-7/reports/qa.md" "state: terminal
 anything"
+run deny  missing-resource-heading-loop-state-landed "$CF" "$CFPATH" "loop_state: landed
+## Capacity forecast
+x
+## Expansion trigger thresholds
+growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, p97.5
+## Cost note
+x
+## Verdict
+within-capacity"
 
 echo "== mandatory case group: replace_all Edit / MultiEdit reconstruction =="
 runedit() { # want name gate_script rel_path existing_content payload_json

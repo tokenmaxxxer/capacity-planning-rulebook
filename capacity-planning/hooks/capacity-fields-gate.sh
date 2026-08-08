@@ -74,7 +74,7 @@ rc=$?
 
 # Leniency: non-terminal (in-progress) writes are not blocked, matching
 # record-fields-gate.sh's own next-steps leniency principle.
-if ! printf '%s' "$content" | grep -qiE 'loop_state:\s*terminal|state:\s*(done|terminal|complete)'; then
+if ! printf '%s' "$content" | grep -qiE 'loop_state:\s*(terminal|landed)|state:\s*(done|terminal|complete)'; then
   gate_allow
 fi
 

@@ -36,6 +36,17 @@ plugin composition this checklist backs.
    `capacity_threshold` (step 4) — never asserted standalone without
    that recomputation.
 
+## Gate enforcement note (issue-16, leniency fix)
+
+`capacity-fields-gate.sh`'s terminal-write trigger now matches
+`loop_state: landed` (this role's actual documented terminal value) in
+addition to the legacy `loop_state: terminal`/`state: done|terminal|complete`
+spellings — previously a record landed with `loop_state: landed` and
+missing required headings (including the Resource/Verdict pair added
+this issue) silently passed every check. See
+`tests/run-gate-tests.sh`'s `missing-resource-heading-loop-state-landed`
+case and `docs/issue-16/reports/implementation.md`.
+
 ## Gate enforcement note (issue-10)
 
 Steps 1-2's method/shape claim (`forecast-method-gate.sh`) and step 4's
