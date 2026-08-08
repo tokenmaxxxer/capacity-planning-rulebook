@@ -96,34 +96,88 @@ echo "== capacity-fields-gate (first coverage, issue-10) =="
 CF="$ROOT/capacity-planning/hooks/capacity-fields-gate.sh"
 CFPATH=docs/issue-7/reports/capacity-planning.md
 GOOD_CF="state: terminal
+## Resource
+db-primary-pool
 ## Capacity forecast
 x
 ## Expansion trigger thresholds
 growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, sized to p97.5
 ## Cost note
-x"
+x
+## Verdict
+within-capacity"
 run allow non-terminal-lenient "$CF" "$CFPATH" "## Capacity forecast
 still drafting"
 run deny  missing-forecast-heading "$CF" "$CFPATH" "state: terminal
+## Resource
+db-primary-pool
 ## Expansion trigger thresholds
 growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, p97.5
 ## Cost note
-x"
+x
+## Verdict
+within-capacity"
 run deny  missing-thresholds-heading "$CF" "$CFPATH" "state: terminal
+## Resource
+db-primary-pool
 ## Capacity forecast
 x
 ## Cost note
-x"
+x
+## Verdict
+within-capacity"
 run deny  missing-growth-rate-term "$CF" "$CFPATH" "state: terminal
+## Resource
+db-primary-pool
 ## Capacity forecast
 x
 ## Expansion trigger thresholds
 lead_time 2 weeks, safety_buffer 15%, p97.5
 ## Cost note
+x
+## Verdict
+within-capacity"
+run deny  missing-resource-heading "$CF" "$CFPATH" "state: terminal
+## Capacity forecast
+x
+## Expansion trigger thresholds
+growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, p97.5
+## Cost note
+x
+## Verdict
+within-capacity"
+run deny  missing-verdict-heading "$CF" "$CFPATH" "state: terminal
+## Resource
+db-primary-pool
+## Capacity forecast
+x
+## Expansion trigger thresholds
+growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, p97.5
+## Cost note
 x"
+run deny  verdict-missing-determination "$CF" "$CFPATH" "state: terminal
+## Resource
+db-primary-pool
+## Capacity forecast
+x
+## Expansion trigger thresholds
+growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, p97.5
+## Cost note
+x
+## Verdict
+tbd"
 run allow all-fields-present "$CF" "$CFPATH" "$GOOD_CF"
 run allow foreign-path "$CF" "docs/issue-7/reports/qa.md" "state: terminal
 anything"
+run deny  missing-resource-heading-loop-state-landed "$CF" "$CFPATH" "loop_state: landed
+## Capacity forecast
+x
+## Expansion trigger thresholds
+growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, p97.5
+## Cost note
+x
+## Verdict
+within-capacity"
 
 echo "== mandatory case group: replace_all Edit / MultiEdit reconstruction =="
 runedit() { # want name gate_script rel_path existing_content payload_json
@@ -136,12 +190,16 @@ runedit() { # want name gate_script rel_path existing_content payload_json
 }
 GOOD_CF_MULTI='{"tool_name":"MultiEdit","tool_input":{"file_path":"'"$CFPATH"'","edits":[{"old_string":"PLACEHOLDER","new_string":"growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, p97.5","replace_all":true},{"old_string":"still drafting","new_string":"y","replace_all":false}]}}'
 runedit allow multiedit-replace_all-mixed "$CF" "$CFPATH" "state: terminal
+## Resource
+db-primary-pool
 ## Capacity forecast
 PLACEHOLDER
 ## Expansion trigger thresholds
 PLACEHOLDER
 ## Cost note
-still drafting" "$GOOD_CF_MULTI"
+still drafting
+## Verdict
+within-capacity" "$GOOD_CF_MULTI"
 
 echo "== mandatory case group: standalone Edit-tool reconstruction (Write|Edit|MultiEdit matcher parity) =="
 GOOD_TH_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$RECORD"'","old_string":"PLACEHOLDER","new_string":"growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, sized to p97.5 of demand over the forecast horizon"}}'
@@ -182,20 +240,28 @@ PLACEHOLDER" "$BAD_FM_EDIT_PAYLOAD"
 
 GOOD_CF_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$CFPATH"'","old_string":"PLACEHOLDER","new_string":"growth_rate 12%/mo, lead_time 2 weeks, safety_buffer 15%, sized to p97.5"}}'
 runedit allow fields-edit-all-present "$CF" "$CFPATH" "state: terminal
+## Resource
+db-primary-pool
 ## Capacity forecast
 x
 ## Expansion trigger thresholds
 PLACEHOLDER
 ## Cost note
-x" "$GOOD_CF_EDIT_PAYLOAD"
+x
+## Verdict
+within-capacity" "$GOOD_CF_EDIT_PAYLOAD"
 BAD_CF_EDIT_PAYLOAD='{"tool_name":"Edit","tool_input":{"file_path":"'"$CFPATH"'","old_string":"PLACEHOLDER","new_string":"lead_time 2 weeks, safety_buffer 15%, p97.5"}}'
 runedit deny  fields-edit-missing-growth-rate "$CF" "$CFPATH" "state: terminal
+## Resource
+db-primary-pool
 ## Capacity forecast
 x
 ## Expansion trigger thresholds
 PLACEHOLDER
 ## Cost note
-x" "$BAD_CF_EDIT_PAYLOAD"
+x
+## Verdict
+within-capacity" "$BAD_CF_EDIT_PAYLOAD"
 
 echo "== mandatory case group: malformed JSON denies (fail-closed) =="
 malformed() { # gate_script raw_payload name

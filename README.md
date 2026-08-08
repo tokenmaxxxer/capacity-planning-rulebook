@@ -6,7 +6,7 @@ generated as skeleton scaffolding by issue-167.
 
 - **decides**: 향후 수요 성장 대비 자원이 충분하며 언제 증설해야 하는가
 - **use_when**: 용량 예측/증설 시점 결정이 걸릴 때
-- **produces**: capacity forecast, expansion trigger thresholds, cost note
+- **produces**: resource, capacity forecast, expansion trigger thresholds, cost note, verdict
 - **write_scope**: []
 - **hand-off**: 성능 자체의 병목 원인 분석은 → performance-engineering
 
@@ -82,6 +82,37 @@ suite). Every kill switch listed above follows the fixed convention: only
 a recognized on-spelling (`1`/`true`/`yes`/`on`, case-insensitive)
 disables the gate — an unset, empty, recognized-off, or any unrecognized
 value all leave the gate active.
+
+### Marketplace spec alignment (issue-16)
+
+This rulebook's vocabulary is layered onto the realized marketplace spec
+`roles/specs/capacity-planning.spec.json` (on-the-record). Field mapping:
+
+| Spec required field | Rulebook home |
+| --- | --- |
+| `resource` | Checklist step 0; record heading "Resource"; gated by `capacity-fields-gate.sh`. |
+| `demand_forecast` | Checklist steps 1-3 ("Capacity forecast" heading); gated by `capacity-fields-gate.sh` + `forecast-method-gate.sh`. |
+| `capacity_threshold` | Checklist step 4 ("Expansion trigger thresholds" heading); gated by `capacity-fields-gate.sh` + `threshold-gate.sh`. |
+| `verdict` | Checklist step 6; record heading "Verdict" (within-capacity/over-capacity, recomputed from `demand_forecast` vs `capacity_threshold`); gated by `capacity-fields-gate.sh`. Recomputation enforcement is upstream `TBD` (issue-521 follow-up) — this rulebook only requires the field present with a valid value. |
+
+`resource`'s `reference_resolution` rule (must resolve to an actual
+monitored resource) is enforced on the on-the-record side
+(`on-the-record/hooks/role-spec-reference-guard.sh`), outside this
+repo's write scope; this rulebook only makes `resource` a
+documented/gated concept on its own record.
+
+Spec `loop_state` vocabulary mapping: `forecasting` and `reviewing` are
+this role's in-progress states, `threshold-undeclared` its refusal
+state, and `resource-unreachable` its error state — none of these are
+special-cased by core's `record-fields-gate.sh` (which only enforces the
+terminal set), so no gate change is needed for them. `landed` is the
+sole terminal state. Core's `record-fields-gate.sh` `ROLE_TO_KIND` does
+not map role `capacity-planning` to any kind, so this role's phase-2
+records self-declare `kind: coding-record` in frontmatter — core's own
+`KIND_TERMINAL_DEFAULTS["coding-record"]` is already exactly `{"landed"}`,
+matching the spec's terminal set with no new gate logic. See
+`docs/issue-16/proposals/spec-field-alignment.md` for the full rationale
+and rejected alternatives.
 
 This is scaffolding, not a finished rulebook: fill in doctrine detail,
 handoff enforcement, and any role-specific progress gate before treating
