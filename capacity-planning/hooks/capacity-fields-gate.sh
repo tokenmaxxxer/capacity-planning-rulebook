@@ -80,6 +80,9 @@ fi
 
 missing=""
 
+printf '%s' "$content" | grep -qE '^#+[[:space:]]*.*(Resource|resource)' \
+  || missing="${missing}- Resource subsection heading missing\n"
+
 printf '%s' "$content" | grep -qE '^#+[[:space:]]*.*(Capacity forecast|capacity forecast)' \
   || missing="${missing}- Capacity forecast subsection heading missing\n"
 
@@ -88,6 +91,27 @@ printf '%s' "$content" | grep -qE '^#+[[:space:]]*.*(Expansion trigger threshold
 
 printf '%s' "$content" | grep -qE '^#+[[:space:]]*.*(Cost note|cost note)' \
   || missing="${missing}- Cost note subsection heading missing\n"
+
+if printf '%s' "$content" | grep -qE '^#+[[:space:]]*.*(Verdict|verdict)'; then
+  verdict_slice="$(printf '%s' "$content" | python3 -c '
+import importlib.util, os
+_spec = importlib.util.spec_from_file_location("gate_lib", os.environ["GATE_LIB_PY"])
+gate_lib = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(gate_lib)
+
+import re, sys
+content = sys.stdin.read()
+m = re.search(
+    r"^#+[^\n]*Verdict[^\n]*\n(.*?)(?=\n#+\s|\Z)",
+    content, re.I | re.M | re.S,
+)
+if m:
+    sys.stdout.write(m.group(1))
+')"
+  printf '%s' "$verdict_slice" | grep -qiE 'within-capacity|over-capacity' \
+    || missing="${missing}- Verdict subsection missing within-capacity/over-capacity determination\n"
+else
+  missing="${missing}- Verdict subsection heading missing\n"
+fi
 
 if printf '%s' "$content" | grep -qE '^#+[[:space:]]*.*(Expansion trigger thresholds|expansion trigger thresholds)'; then
   threshold_slice="$(printf '%s' "$content" | python3 -c '
