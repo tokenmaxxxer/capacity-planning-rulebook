@@ -6,6 +6,30 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT="$HERE/.."
+
+# issue #551 canonical test-env resolution convention
+# (docs/specs/test-env-resolution.md): resolve core once, up front, or
+# SKIP with the convention's exit 75 instead of letting every core-dependent
+# case group report a misleading FAIL.
+resolve_core() {
+  if [ -n "${CLAUDE_PLUGIN_ROOT_CORE:-}" ] && [ -s "$CLAUDE_PLUGIN_ROOT_CORE/hooks/lib/gate-lib.sh" ]; then
+    return 0
+  fi
+  for candidate in "$ROOT/../core" "$ROOT/../../core" "$ROOT/../../tokenmaxxxer-core/core"; do
+    if [ -s "$candidate/hooks/lib/gate-lib.sh" ]; then
+      CLAUDE_PLUGIN_ROOT_CORE="$(cd "$candidate" && pwd -P)"
+      export CLAUDE_PLUGIN_ROOT_CORE
+      return 0
+    fi
+  done
+  echo "SKIP: core plugin unreachable — unverifiable outside spawn env" >&2
+  return 75
+}
+if ! resolve_core; then
+  exit 75
+fi
+export CLAUDE_PLUGIN_ROOT_CORE
+
 pass=0; fail=0
 report() { if [ "$2" = "$1" ]; then pass=$((pass+1)); printf 'ok     %-38s %s\n' "$3" "$2"; else fail=$((fail+1)); printf 'FAIL   %-38s want=%s got=%s\n' "$3" "$1" "$2"; fi; }
 

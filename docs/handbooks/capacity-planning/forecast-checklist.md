@@ -47,6 +47,21 @@ this issue) silently passed every check. See
 `tests/run-gate-tests.sh`'s `missing-resource-heading-loop-state-landed`
 case and `docs/issue-16/reports/implementation.md`.
 
+## Test-env resolution note (issue-19)
+
+`tests/run-gate-tests.sh` now resolves core's `hooks/lib/gate-lib.sh`
+via the canonical convention (`docs/specs/test-env-resolution.md`,
+issue #551) before running any core-dependent case group: env var
+`CLAUDE_PLUGIN_ROOT_CORE` → sibling candidates (`../core`, `../../core`,
+`../../tokenmaxxxer-core/core`) → SKIP with exit 75 and an explicit
+stderr message. Outside the spawn env this makes the run report
+`SKIP` instead of misleading `FAIL`s; the `missingcore()` case group
+(which force-sets an unreachable `CLAUDE_PLUGIN_ROOT_CORE` to assert
+fail-closed deny) is unaffected — it runs unconditionally regardless of
+this top-of-script resolution. See
+`docs/issue-19/proposals/adopt-test-env-resolution.md` and
+`docs/issue-19/reports/implementation.md`.
+
 ## Gate enforcement note (issue-10)
 
 Steps 1-2's method/shape claim (`forecast-method-gate.sh`) and step 4's
