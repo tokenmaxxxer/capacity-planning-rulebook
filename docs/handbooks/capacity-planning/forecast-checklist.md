@@ -74,6 +74,28 @@ See `docs/handbooks/gate-house-standard.md` and
 enforcement now runs on (`gate-lib.sh`/`gate-lib.py`, referenced not
 copied).
 
+## Tool-landscape refinements (issue-1199)
+
+Step 2's method claim, step 4's `safety_buffer` term, and step 5's band
+each gained one further rule from a surveyed tool-landscape sweep
+(adoption-evidence method): `demand-shape-and-forecast-method.md` rule
+10 requires the fitted forecast's components (trend, seasonal, event)
+stated separately rather than blended, sharpening what step 3's
+forecast-vs-actual divergence check can attribute a mismatch to;
+`expansion-trigger-threshold-sizing.md` rule 11 scopes `safety_buffer`
+to the provisioning-lead-time gap when the resource has genuine elastic
+on-demand capacity, instead of a static buffer sized as if all growth
+had to be pre-provisioned; `cost-attribution-at-trigger.md` rule 11
+requires the cost note attributed at the specific resource/workload
+granularity that fired the threshold when several resources share an
+expanded umbrella; `headroom-band-and-degradation-risk.md` rule 11
+requires a stated reactive fallback trigger alongside any
+forecast-driven band, so a forecast miss has a defined recourse before
+the next forecast cycle. Full evidence trail (tools surveyed, adoption
+evidence, insight mapping) lives on the `on-the-record` working tree at
+`docs/issue-1199/reports/capacity-planning.md` — none of it is
+reproduced here.
+
 ## Gate A+ final closeout note (issue-13)
 
 Step 4's percentile check now requires a non-alphanumeric boundary before
