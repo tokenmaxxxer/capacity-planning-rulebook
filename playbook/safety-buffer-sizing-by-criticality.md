@@ -1,0 +1,30 @@
+---
+axis: safety-buffer-sizing-by-criticality
+rule_count_floor: 8
+---
+
+# Safety-buffer sizing by criticality and blast radius
+
+Research trail: safety-stock/service-level supply-chain literature (Working Capital Hub's safety-stock formula guide, SPS Commerce's formula-selection guide, Verusen/Verdantis on criticality-weighted spare-parts buffers), applied to capacity buffers rather than physical inventory. All fetched/searched this session.
+
+## Rules
+
+1. When choosing a safety_buffer size for a resource, derive it from the same three drivers physical safety-stock formulas use — demand variability, lead-time variability, and required service level — rather than picking a single house-wide buffer percentage for every resource, because a resource with volatile demand or a long, uncertain provisioning lead time needs materially more buffer than a stable, fast-to-provision one even at the same service-level target. source: https://www.workingcapitalhub.com/inventory/safety-stock-explained/
+
+2. When a resource's failure mode is a hard outage or user-visible unavailability if capacity runs out (request-serving fleets, primary databases), size its buffer to a high service level (e.g. p99) — moving from a 90% to a 99% service level can "nearly double" the required buffer rather than scaling linearly, so a high-blast-radius resource's buffer is not a small increment over a low-blast-radius resource's, it is disproportionately larger. source: https://www.workingcapitalhub.com/inventory/safety-stock-explained/
+
+3. When a resource's failure mode is graceful degradation (background jobs queue longer, batch processing delays, non-critical caches miss more) rather than a hard outage, size its buffer to a lower service level (e.g. p90) deliberately — over-buffering a resource whose exhaustion is tolerable spends the same disproportionate buffer cost the p99 case incurs for a case that doesn't need it, which is real waste under the same nonlinear service-level-to-buffer relationship. source: https://www.workingcapitalhub.com/inventory/safety-stock-explained/
+
+4. When two resources have the same forecasted growth rate but different criticality, rank buffer sizing by operational consequence first and demand history second — criticality-weighted buffer methodology explicitly assigns buffer "by operational consequence first, demand history second," which is the specific failure mode plain formula-driven buffers (that weight only historical demand variance) miss when a low-history, high-consequence resource looks deceptively safe on paper. source: https://verusen.com/spare-parts-management/how-to-calculate-mro-safety-stock/
+
+5. When a resource's provisioning lead time itself is volatile (vendor lead times vary, quota approval timing is unpredictable, cross-team dependencies add unknown delay), increase the safety_buffer term specifically for lead-time variance, separate from and in addition to demand-variance buffer — the standard safety-stock drivers treat lead-time variability as its own independent driver of buffer size, not something covered by a demand-variance margin alone. source: https://www.spscommerce.com/community/articles/how-to-calculate-safety-stock-formulas-and-methods-that-fit-your-data
+
+6. When a single resource serves workloads of mixed criticality (e.g. one shared cluster serves both a customer-facing API and an internal batch job), size the buffer to the highest-criticality consumer on that resource, not an average across consumers — a blast-radius framing means the worst-case failure mode determines the required protection, and averaging criticality across consumers under-buffers the resource for its most consequential use.
+
+7. When justifying a buffer size in a capacity record, state which formula driver (demand variability, lead-time variability, or service-level target) is actually pushing the number, rather than presenting a single combined buffer percentage with no attribution — an unattributed buffer number cannot be revisited correctly when only one driver changes (e.g. lead time shortens after a new vendor contract), forcing a full re-derivation instead of a targeted update.
+
+8. When historical demand data for a resource is sparse or the resource is new (no mature demand history to compute variance from), do not default to a low buffer just because computed variance looks small — sparse-history buffer methodology explicitly separates "criticality-weighted" sizing from pure demand-history-driven sizing for exactly this case, because low observed variance from too little data is not the same as low true variance. source: https://verusen.com/spare-parts-management/how-to-calculate-mro-safety-stock/
+
+9. **REMOVAL**: When a resource's buffer has historically been set as one flat percentage applied uniformly across all resources regardless of criticality, retire that flat-percentage practice for any resource where criticality or blast radius differs from the peer resources it was copied from — carrying forward a shared flat number silently overprotects the low-consequence resources (wasted cost) while underprotecting the high-consequence ones (real risk), which is the opposite of what a criticality-weighted buffer is supposed to prevent. source: https://verusen.com/spare-parts-management/how-to-calculate-mro-safety-stock/
+
+10. **REMOVAL**: When a resource's blast radius has shrunk (e.g. a formerly single-point-of-failure service now sits behind redundancy or a circuit breaker that contains its failure), lower its safety_buffer target instead of leaving the original high-criticality buffer in place — leaving an outsized buffer after the underlying risk driver is gone is the same "buffer no longer attributable to a real driver" failure as rule 7 warns against, just discovered after the fact rather than at design time.

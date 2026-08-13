@@ -25,6 +25,11 @@ claude plugin install capacity-planning
 - `capacity-planning/hooks/capacity-fields-gate.sh` — this role's phase-2
   record required-field gate (kill switch `CAPACITY_FIELDS_GATE_OFF=1`)
 - `docs/specs/approvers.md` — Approve-authority allowlist (see below)
+- `playbook/*.md` — operational decision-rule playbook (issue #1174): one
+  file per decision axis, each a condition->choice->source rule table
+  with `axis`/`rule_count_floor` front matter and >=1 REMOVAL-category
+  rule per axis, peer to the plugin dirs above per that repo's own
+  layout convention
 
 Generic `Subject: issue-<n>` trailer enforcement, per-record required-field
 enforcement (core's own field set), and handbook-sync enforcement come from
