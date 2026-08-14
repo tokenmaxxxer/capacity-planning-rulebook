@@ -96,6 +96,31 @@ evidence, insight mapping) lives on the `on-the-record` working tree at
 `docs/issue-1199/reports/capacity-planning.md` — none of it is
 reproduced here.
 
+## Tool-landscape refinements, Claude Code plugin sweep (issue-1199, 2026-08-14 amendment)
+
+The original sweep above surveyed general practitioner domain tools
+(Karpenter, Kubecost, Prophet, Scryer), which the issue's 2026-08-14
+amendment ruled out of scope: the survey target is the CLAUDE CODE
+PLUGIN/SKILL ecosystem itself. A second rule landed per axis from that
+narrower sweep, each with its own `tool:`/adoption-evidence/`problem:`/
+`how:`/`learning ->` block inline in the playbook file (not summarized
+here, per this checklist's own no-catalog convention):
+`expansion-trigger-threshold-sizing.md` rule 12 (from the
+`alirezarezvani/claude-skills` `capacity-planner` skill's
+"treat-ramp-as-instant" anti-pattern — new capacity must ramp to full
+throughput, not appear instantly at lead_time's end);
+`cost-attribution-at-trigger.md` rule 12 (from `ryoppippi/ccusage` —
+cost notes must derive from real per-session/per-model usage records,
+not a blended-average estimate); `safety-buffer-sizing-by-criticality.md`
+rule 11 (from `Maciek-roboblog/Claude-Code-Usage-Monitor` — size the
+buffer's variability driver from a rolling recent-usage window, not a
+flat org-wide default); `headroom-band-and-degradation-risk.md` rule 12
+(from `wshobson/agents`'s `observability-monitoring` plugin — the
+reactive fallback trigger needs a named owner/escalation path, not just
+a threshold value). Full evidence trail (adoption-evidence citations,
+Problem/How/Learning detail) lives on the `on-the-record` working tree
+at `docs/issue-1199/reports/capacity-planning.md`.
+
 ## Gate A+ final closeout note (issue-13)
 
 Step 4's percentile check now requires a non-alphanumeric boundary before
