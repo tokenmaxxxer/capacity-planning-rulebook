@@ -74,6 +74,53 @@ See `docs/handbooks/gate-house-standard.md` and
 enforcement now runs on (`gate-lib.sh`/`gate-lib.py`, referenced not
 copied).
 
+## Tool-landscape refinements (issue-1199)
+
+Step 2's method claim, step 4's `safety_buffer` term, and step 5's band
+each gained one further rule from a surveyed tool-landscape sweep
+(adoption-evidence method): `demand-shape-and-forecast-method.md` rule
+10 requires the fitted forecast's components (trend, seasonal, event)
+stated separately rather than blended, sharpening what step 3's
+forecast-vs-actual divergence check can attribute a mismatch to;
+`expansion-trigger-threshold-sizing.md` rule 11 scopes `safety_buffer`
+to the provisioning-lead-time gap when the resource has genuine elastic
+on-demand capacity, instead of a static buffer sized as if all growth
+had to be pre-provisioned; `cost-attribution-at-trigger.md` rule 11
+requires the cost note attributed at the specific resource/workload
+granularity that fired the threshold when several resources share an
+expanded umbrella; `headroom-band-and-degradation-risk.md` rule 11
+requires a stated reactive fallback trigger alongside any
+forecast-driven band, so a forecast miss has a defined recourse before
+the next forecast cycle. Full evidence trail (tools surveyed, adoption
+evidence, insight mapping) lives on the `on-the-record` working tree at
+`docs/issue-1199/reports/capacity-planning.md` — none of it is
+reproduced here.
+
+## Tool-landscape refinements, Claude Code plugin sweep (issue-1199, 2026-08-14 amendment)
+
+The original sweep above surveyed general practitioner domain tools
+(Karpenter, Kubecost, Prophet, Scryer), which the issue's 2026-08-14
+amendment ruled out of scope: the survey target is the CLAUDE CODE
+PLUGIN/SKILL ecosystem itself. A second rule landed per axis from that
+narrower sweep, each with its own `tool:`/adoption-evidence/`problem:`/
+`how:`/`learning ->` block inline in the playbook file (not summarized
+here, per this checklist's own no-catalog convention):
+`expansion-trigger-threshold-sizing.md` rule 12 (from the
+`alirezarezvani/claude-skills` `capacity-planner` skill's
+"treat-ramp-as-instant" anti-pattern — new capacity must ramp to full
+throughput, not appear instantly at lead_time's end);
+`cost-attribution-at-trigger.md` rule 12 (from `ryoppippi/ccusage` —
+cost notes must derive from real per-session/per-model usage records,
+not a blended-average estimate); `safety-buffer-sizing-by-criticality.md`
+rule 11 (from `Maciek-roboblog/Claude-Code-Usage-Monitor` — size the
+buffer's variability driver from a rolling recent-usage window, not a
+flat org-wide default); `headroom-band-and-degradation-risk.md` rule 12
+(from `wshobson/agents`'s `observability-monitoring` plugin — the
+reactive fallback trigger needs a named owner/escalation path, not just
+a threshold value). Full evidence trail (adoption-evidence citations,
+Problem/How/Learning detail) lives on the `on-the-record` working tree
+at `docs/issue-1199/reports/capacity-planning.md`.
+
 ## Gate A+ final closeout note (issue-13)
 
 Step 4's percentile check now requires a non-alphanumeric boundary before
